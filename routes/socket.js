@@ -1,5 +1,4 @@
 const creatSS = require('socket.io');
-const mongoose = require('mongoose');
 const chalk = require('chalk');
 const faker = require('faker');
 const uuid = require('uuid');
@@ -12,7 +11,7 @@ const verifyJWToken = require('../utils/verifyJWToken');
 
 const { v4 } = uuid
 
-// mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true, useUnifiedTopology: true});
+const mongoose = {disconnect: () => {}}
 
 class WSServer {
   constructor(server) {
@@ -26,6 +25,7 @@ class WSServer {
         verifyJWToken(token).then(decoded => {
 
           socket.handshake.decode = decoded;
+          // console.log(chalk.green('LOG:'),packet)
           next();
         })
         .catch(er => {})
@@ -33,33 +33,47 @@ class WSServer {
       })
 
       socket
+        .on('JOIN', ({}, cb) => {
+
+          const { _id } = socket.handshake.decode;
+          socket.join(_id);
+          
+          const rooms = [...socket.rooms]
+          console.log("SUCCESS_JOIN| ROOMS:", rooms)
+
+          cb(rooms)
+          // Бродкастнуть всем, что я стал онлайн
+        })
+        // .on('JOIN_ROOM', ({room}, cb = () => {}) => {
+        //   socket.join(room)
+        //   console.log("SUCCESS_JOIN_ROOM| ROOMS:", socket.rooms)
+        //   cb({rooms: [...socket.rooms]})
+        // })
         .on('MSG', (data) => {
           debugger
           socket.emit('CLIENT_MSG', 'Ответочка')
         })
-        .on('JOIN_ROOM', (room, cb) => {
-          socket.join(room);
-          console.log('Sockets rooms:',socket.rooms);
-          const rooms = [...socket.rooms];
-          cb({status: 'ok', rooms})
-        })
         .on('PRIVATE_MSG', ({payload: {addres, message}}, cb) => {
 
-          this.dBConnection().then(() => {
-            const target = MsgModel({text: message, address: addres});
-            target.save((er, doc) => {
-              if(er) {
-                console.log(chalk.redBright('Mongoose_save_error'), er);
-                return
-              }
-              console.log(chalk.green('SUCCESS_SAVE'), doc);
+          // this.dBConnection().then(() => {
+          //   const target = MsgModel({text: message, address: addres});
+          //   target.save((er, doc) => {
+          //     if(er) {
+          //       console.log(chalk.redBright('Mongoose_save_error'), er);
+          //       return
+          //     }
+          //     console.log(chalk.green('SUCCESS_SAVE'), doc);
 
-              mongoose.disconnect();
-            })
-          })
+          //     mongoose.disconnect();
+          //   })
+          // })
+          // socket.join(addres)
 
-          socket.to(addres).emit('PRIVATE_MSG', message);
-          cb();
+          socket.to(addres).emit('RES_PRIVATE_MSG', message);
+          // socket.leave(addres)
+          const rooms = [...socket.rooms]
+          console.log(chalk.magentaBright('SENDER_ROOMS'), rooms)
+          cb(rooms);
         })
         .on('GET_MSGS', () => {
           console.log('DEBUG_GET_MSGS')
@@ -417,22 +431,141 @@ class WSServer {
           //////////////////////////////////////////////////////////////////
 
         })
-        // .on('GET_PEOPLE', () => {
-        //   UserModel.find().then(data => {
-        //     setTimeout(() => {
-        //       socket.emit('RES_PEOPLE', data);
-        //       console.log('RES_PEOPLE')
+        .on('GET_PEOPLE', () => {
+          UserModel.find().then(data => {
+            socket.emit('RES_PEOPLE', data);
+            
+          }).catch(er => {
+            console.log(chalk.redBright('MONGOOSE_FIND_PEOPLE_ER:'), er);
+          })
+        })
+        .on('CREATE_NEW_DIALOG', ({newDialogTargetId}) => {
+          const { _id: myId } = socket.handshake.decode
+
+          DialogModel({
+            author: myId,
+            partner: newDialogTargetId, 
+            poll: v4()
+          }).save().then(dialog => {
+            DialogModel.findById(dialog['_id'])
+            .populate(['author', 'partner'])
+            .then(dialog => {
+              socket.emit('RES_NEW_DIALOG', {dialog, target: 'me'});
+
+              UserModel.findById(newDialogTargetId).then(user => {
+                
+                const { online, _id } = user
+                if(online) {
+                  const _idAddres = _id+'';
+                  socket.to(_idAddres).emit('RES_NEW_DIALOG', {dialog, target: 'partner'})
+                  
+                  console.log('SEND_RES_NEW_DIALOG', _id)
+                  // socket.leave(_id)
+                }
+              })
+
+            })
+            
+          })
+        })
+        .on('CREATE_MESSAGE', ({dialogId, poll, userId, targetUserId, text}) => {
+
+          MsgModel.find({ dialog: dialogId, poll: poll })
+          .then(msgData => {
+            
+            console.log('MSG_DATA:', msgData);
+            // Все 3 ситуации отдельно обрабатываются
+            if(!msgData.length) {
+              // Инициализация серии сообщений
+              const msgTarget = MsgModel({
+                text,
+                author: userId,
+                dialog: dialogId,
+                createdAt: Date.now(),
+                poll: poll,
+                prevPoll: 'none',
+                nextPoll: ''
+              });
               
-        //     }, 3000)
-            
-        //   }).catch(er => {
-        //     console.log(chalk.redBright('MONGOOSE_FIND_PEOPLE_ER:'), er);
-        //   })
-          
-        //   // this.dBConnection().then(() => {
-            
-        //   // })
-        // })
+              msgTarget.save()
+              .then((message) => {
+                console.log('SC_SAVE_FM');
+                successSaveCallback(message);
+              })
+              .catch(er => {
+                console.log(chalk.redBright('Mongoose_save_error'), er);
+              });
+            } else {
+              // Продолжение серии и проверки
+              const pollLen = 22;
+
+              if(msgData.length >= pollLen) {
+                // Составление нового пула 
+                const newPollId = v4();
+                MsgModel.updateMany({poll}, {nextPoll: newPollId})
+                .then(() => {
+                  console.log('SC_UPDATE_MSGS');
+
+                  const msgTarget = MsgModel({
+                    text,
+                    author: userId,
+                    dialog: dialogId,
+                    createdAt: Date.now(),
+                    poll: newPollId,
+                    prevPoll: poll,
+                    nextPoll: '',
+                  });
+                  
+                  msgTarget.save()
+                  .then((message) => {
+                    console.log('SC_ADD_NEW_MSG');
+                    successSaveCallback(message);
+
+                    DialogModel.updateOne({ _id: dialogId }, { poll:newPollId })
+                    .then(() => {
+                      console.log('SC_UP_DIALOG_POLL');
+                      
+                    })
+                    .catch(er => {
+                      console.log(chalk.redBright('Mongoose_save_error'), er);
+                    })
+                  })
+                  .catch(er => {
+                    console.log(chalk.redBright('Mongoose_save_error'), er);
+                  })
+                });
+
+              } else {
+                const { prevPoll } = msgData[0]
+                // Продолжение пула
+                const msgTarget = MsgModel({
+                  text,
+                  author: userId,
+                  dialog: dialogId,
+                  createdAt: Date.now(),
+                  poll: poll,
+                  prevPoll,
+                  nextPoll: ''
+                });
+                
+                msgTarget.save()
+                .then((message) => {
+                  successSaveCallback(message);
+
+                  console.log('SC_ADD_NEW_MSG');
+                })
+                .catch(er => {
+                  console.log(chalk.redBright('Mongoose_save_error'), er);
+                })
+              }
+            }
+          })
+
+          function successSaveCallback(message) {
+            socket.emit('RES_MESSAGE', {message, dialogId});
+            socket.to(targetUserId).emit('RES_MESSAGE', {message, dialogId})
+          }
+        })
         .on('LOGOUT', () => {
           console.log('SOCKET_HANDSHAKE:', socket.handshake.decode)
         })
@@ -448,18 +581,19 @@ class WSServer {
 
   dBConnection() {
     return new Promise((resolve, reject) => {
-      mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true, useUnifiedTopology: true});
-          const db = mongoose.connection;
+      // mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true, useUnifiedTopology: true});
+      //     const db = mongoose.connection;
 
-          db.on('error', er => {
-            console.log(chalk.redBright('Mongoose_connection_error'), er);
-            reject(er);
-            return
-          });
-          db.once('open', () => {
-            resolve();
-            return
-          })
+      //     db.on('error', er => {
+      //       console.log(chalk.redBright('Mongoose_connection_error'), er);
+      //       reject(er);
+      //       return
+      //     });
+      //     db.once('open', () => {
+      //       resolve();
+      //       return
+      //     })
+      resolve()
     })
   }
 

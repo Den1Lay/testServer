@@ -1,12 +1,14 @@
 const app = require('../app');
 const debug = require('debug')('server:server');
 const http = require('http');
+const mongoose = require('mongoose')
 
 const SocketServer = require('../routes/socket');
 
 const port = normalizePort(process.env.PORT || '3000');
 app.set('port', port);
 
+mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true, useUnifiedTopology: true});
 const server = http.createServer(app);
 
 

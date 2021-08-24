@@ -12,7 +12,10 @@ const dialogSchema = Schema({
     ref: 'User'
   },
   poll: String,
-  createdAt: Date,
+  createdAt: {
+    type: Date,
+    default: Date.now()
+  },
 });
 
 const DialogModel = model('Dialog', dialogSchema);
