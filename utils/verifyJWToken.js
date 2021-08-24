@@ -6,7 +6,7 @@ const verifyJWToken = (token) => {
   return new Promise((resolve, reject) => {
     verify(
       token,
-      process.env.JWT_SECRET || '',
+      process.env.JWT_SECRET || 'PRO$TOY',
       (er, decoded) => {
         if(er) {
           reject(er)

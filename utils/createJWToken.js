@@ -7,7 +7,7 @@ const createJWToken = (payloadObj) => {
   try {
     return sign(
       payloadObj,
-      process.env.JWT_SECRET || '',
+      process.env.JWT_SECRET || 'PRO$TOY',
       {
         algorithm: 'HS256' // make drop errors
       }
