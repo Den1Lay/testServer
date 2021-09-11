@@ -1,6 +1,13 @@
 const mongoose = require('mongoose');
+const uuid = require('uuid')
 
-const userSchema = mongoose.Schema({
+const { Schema, model, Types } = mongoose;
+
+const userSchema = Schema({
+  _id: {
+    type: Schema.Types.ObjectId,
+    default: Types.ObjectId(),
+  },
   loginName: String,
   nickName: String,
   password: String,
@@ -13,6 +20,6 @@ const userSchema = mongoose.Schema({
   }
 });
 
-const UserModel = mongoose.model('User', userSchema);
+const UserModel = model('User', userSchema);
 
 module.exports = UserModel;

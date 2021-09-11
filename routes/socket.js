@@ -21,6 +21,11 @@ class WSServer {
     .on('connection', socket => {
 
       socket.use((packet, next) => {
+        // Отработка исключения
+        if(packet?.[0] === 'LOGOUT') {
+          next();
+        }
+
         const token = packet?.[1]?.token;
         verifyJWToken(token).then(decoded => {
 
@@ -37,7 +42,8 @@ class WSServer {
 
           const { _id } = socket.handshake.decode;
           socket.join(_id);
-          
+          this.setOnlineServer(socket, _id, true)
+
           const rooms = [...socket.rooms]
           console.log("SUCCESS_JOIN| ROOMS:", rooms)
 
@@ -144,24 +150,23 @@ class WSServer {
 
           //=======================Создание юзеров==========================
 
-          // this.dBConnection().then(() => {
-          //   const newUser = UserModel({
-          //     name: faker.internet.userName(),
-          //     age: Math.floor(Math.random()*100),
-          //     password: faker.internet.password(),
-          //     last_seen: Date.now(), 
-          //     confirmed: false,
-          //     registrateDate: Date.now(),
-          //   })
-          //   .save((er) => {
-          //     if(er) {
-          //       console.log(chalk.redBright('Mongoose_save_error'), er);
-          //       return      
-          //     }
-          //     console.log('SUCCESS_SAVE_USER')
-          //     mongoose.disconnect();
-          //   })
-          // })
+          this.dBConnection().then(() => {
+            const newUser = UserModel({
+              loginName: faker.internet.userName(),
+              nickName: faker.internet.userName(),
+              password: faker.internet.password(),
+              last_seen: Date.now(), 
+              confirmed: false,
+              registrateDate: Date.now(),
+            })
+            .save((er) => {
+              if(er) {
+                console.log(chalk.redBright('Mongoose_save_error'), er);
+                return      
+              }
+              console.log('SUCCESS_SAVE_USER')
+            })
+          })
 
           //////////////////////////////////////////////////////////////////
           
@@ -204,142 +209,142 @@ class WSServer {
           //=================Пулл сервер для сообщений==================
 
           // Сообщения летят на первый диалог чела с именем в searchName
-          this.dBConnection().then(() => {
+          // this.dBConnection().then(() => {
 
-            // const searchName = 'Novella.Ferry87';
-            const { loginName: decodeLoginName } = socket.handshake.decode
+          //   // const searchName = 'Novella.Ferry87';
+          //   const { loginName: decodeLoginName } = socket.handshake.decode
 
-            console.log(socket.handshake.decode)
+          //   console.log(socket.handshake.decode)
 
-            UserModel.findOne({loginName: decodeLoginName}).then(data => {
-              console.log('THEN_DATA:',data)
+          //   UserModel.findOne({loginName: decodeLoginName}).then(data => {
+          //     console.log('THEN_DATA:',data)
               
-              const { _id: userId } = data
+          //     const { _id: userId } = data
 
               
-              DialogModel.find({$or: [{author: userId}, {partner: userId}]})
-              .populate(['author', 'partner'])
-              .then(dialogData => {
-                console.log('DIALOG_DATA:', dialogData);
+          //     DialogModel.find({$or: [{author: userId}, {partner: userId}]})
+          //     .populate(['author', 'partner'])
+          //     .then(dialogData => {
+          //       console.log('DIALOG_DATA:', dialogData);
     
-                const newDialogId = '611e667194c3dc6cfcc172d5'
+          //       const newDialogId = '611e667194c3dc6cfcc172d5'
 
-                const choosedDialog = dialogData.filter(({ _id }) => {
-                  // console.log(typeof _id)
-                  // console.log(_id)
-                  // console.log(typeof newDialogId)
-                  return _id == newDialogId;
-                })
+          //       const choosedDialog = dialogData.filter(({ _id }) => {
+          //         // console.log(typeof _id)
+          //         // console.log(_id)
+          //         // console.log(typeof newDialogId)
+          //         return _id == newDialogId;
+          //       })
 
-                console.log('CHOOSED_DIALOG:', choosedDialog);
+          //       console.log('CHOOSED_DIALOG:', choosedDialog);
 
-                const { _id: dialogId, poll } = choosedDialog[0];
+          //       const { _id: dialogId, poll } = choosedDialog[0];
                 
-                // Получение сообщений для того что бы понять в каком состоянии диалог
-                MsgModel.find({ dialog: dialogId, poll: poll })
-                .then(msgData => {
+          //       // Получение сообщений для того что бы понять в каком состоянии диалог
+          //       MsgModel.find({ dialog: dialogId, poll: poll })
+          //       .then(msgData => {
                   
-                  console.log('MSG_DATA:', msgData);
-                  // Все 3 ситуации отдельно обрабатываются
-                  if(!msgData.length) {
-                    // Инициализация серии сообщений
-                    const msgTarget = MsgModel({
-                      text: faker.lorem.text(),
-                      author: userId,
-                      dialog: dialogId,
-                      createdAt: Date.now(),
-                      poll: poll,
-                      prevPoll: 'none',
-                      nextPoll: ''
-                    });
+          //         console.log('MSG_DATA:', msgData);
+          //         // Все 3 ситуации отдельно обрабатываются
+          //         if(!msgData.length) {
+          //           // Инициализация серии сообщений
+          //           const msgTarget = MsgModel({
+          //             text: faker.lorem.text(),
+          //             author: userId,
+          //             dialog: dialogId,
+          //             createdAt: Date.now(),
+          //             poll: poll,
+          //             prevPoll: 'none',
+          //             nextPoll: ''
+          //           });
                     
-                    msgTarget.save()
-                    .then(() => {
-                      console.log('SC_SAVE_FM');
-                      mongoose.disconnect();
-                    })
-                    .catch(er => {
-                      console.log(chalk.redBright('Mongoose_save_error'), er);
-                      mongoose.disconnect();
-                    });
-                  } else {
-                    // Продолжение серии и проверки
-                    const pollLen = 3;
+          //           msgTarget.save()
+          //           .then(() => {
+          //             console.log('SC_SAVE_FM');
+          //             mongoose.disconnect();
+          //           })
+          //           .catch(er => {
+          //             console.log(chalk.redBright('Mongoose_save_error'), er);
+          //             mongoose.disconnect();
+          //           });
+          //         } else {
+          //           // Продолжение серии и проверки
+          //           const pollLen = 3;
 
-                    if(msgData.length >= pollLen) {
-                      // Составление нового пула 
-                      const newPollId = v4();
-                      MsgModel.updateMany({poll}, {nextPoll: newPollId})
-                      .then(() => {
-                        console.log('SC_UPDATE_MSGS');
+          //           if(msgData.length >= pollLen) {
+          //             // Составление нового пула 
+          //             const newPollId = v4();
+          //             MsgModel.updateMany({poll}, {nextPoll: newPollId})
+          //             .then(() => {
+          //               console.log('SC_UPDATE_MSGS');
 
-                        const msgTarget = MsgModel({
-                          text: faker.lorem.text(),
-                          author: userId,
-                          dialog: dialogId,
-                          createdAt: Date.now(),
-                          poll: newPollId,
-                          prevPoll: poll,
-                          nextPoll: '',
-                        });
+          //               const msgTarget = MsgModel({
+          //                 text: faker.lorem.text(),
+          //                 author: userId,
+          //                 dialog: dialogId,
+          //                 createdAt: Date.now(),
+          //                 poll: newPollId,
+          //                 prevPoll: poll,
+          //                 nextPoll: '',
+          //               });
                         
-                        msgTarget.save()
-                        .then(() => {
-                          console.log('SC_ADD_NEW_MSG');
-                          DialogModel.updateOne({ _id: dialogId }, { poll:newPollId })
-                          .then(() => {
-                            console.log('SC_UP_DIALOG_POLL');
-                            mongoose.disconnect();
-                          })
-                          .catch(er => {
-                            console.log(chalk.redBright('Mongoose_save_error'), er);
-                            mongoose.disconnect();
-                          })
+          //               msgTarget.save()
+          //               .then(() => {
+          //                 console.log('SC_ADD_NEW_MSG');
+          //                 DialogModel.updateOne({ _id: dialogId }, { poll:newPollId })
+          //                 .then(() => {
+          //                   console.log('SC_UP_DIALOG_POLL');
+          //                   mongoose.disconnect();
+          //                 })
+          //                 .catch(er => {
+          //                   console.log(chalk.redBright('Mongoose_save_error'), er);
+          //                   mongoose.disconnect();
+          //                 })
 
                           
-                        })
-                        .catch(er => {
-                          console.log(chalk.redBright('Mongoose_save_error'), er);
-                          mongoose.disconnect();
-                        })
-                      });
+          //               })
+          //               .catch(er => {
+          //                 console.log(chalk.redBright('Mongoose_save_error'), er);
+          //                 mongoose.disconnect();
+          //               })
+          //             });
 
-                    } else {
-                      const { prevPoll } = msgData[0]
-                      // Продолжение пула
-                      const msgTarget = MsgModel({
-                        text: faker.lorem.text(),
-                        author: userId,
-                        dialog: dialogId,
-                        createdAt: Date.now(),
-                        poll: poll,
-                        prevPoll,
-                        nextPoll: ''
-                      });
+          //           } else {
+          //             const { prevPoll } = msgData[0]
+          //             // Продолжение пула
+          //             const msgTarget = MsgModel({
+          //               text: faker.lorem.text(),
+          //               author: userId,
+          //               dialog: dialogId,
+          //               createdAt: Date.now(),
+          //               poll: poll,
+          //               prevPoll,
+          //               nextPoll: ''
+          //             });
                       
-                      msgTarget.save()
-                      .then(() => {
-                        console.log('SC_ADD_NEW_MSG');
-                        mongoose.disconnect();
-                      })
-                      .catch(er => {
-                        console.log(chalk.redBright('Mongoose_save_error'), er);
-                        mongoose.disconnect();
-                      })
-                    }
-                  }
-                })
+          //             msgTarget.save()
+          //             .then(() => {
+          //               console.log('SC_ADD_NEW_MSG');
+          //               mongoose.disconnect();
+          //             })
+          //             .catch(er => {
+          //               console.log(chalk.redBright('Mongoose_save_error'), er);
+          //               mongoose.disconnect();
+          //             })
+          //           }
+          //         }
+          //       })
                 
                 
 
                 
-              })
+          //     })
 
-            }).catch(er => {
-              console.log(chalk.redBright('Mongoose_findOne_error'), er);
-              return;
-            })
-          })
+          //   }).catch(er => {
+          //     console.log(chalk.redBright('Mongoose_findOne_error'), er);
+          //     return;
+          //   })
+          // })
 
           //===============================================================
 
@@ -566,14 +571,87 @@ class WSServer {
             socket.to(targetUserId).emit('RES_MESSAGE', {message, dialogId})
           }
         })
-        .on('LOGOUT', () => {
-          console.log('SOCKET_HANDSHAKE:', socket.handshake.decode)
+        .on('READ_MESSAGE', ({dialogId, messagesId, targetUserId, pass}) => {
+          
+          MsgModel.updateMany({_id: messagesId}, {readed: true})
+            .then((updated) => {
+              console.log(chalk.cyanBright('UPDATED_MESSAGES:'), updated)
+              socket.emit('SET_READ_MESSAGE', { dialogId, messagesId, pass })
+              socket.to(targetUserId).emit('SET_READ_MESSAGE', { dialogId, messagesId })
+            })
+            .catch(er => {
+              console.log(chalk.redBright('UPDATED_MESSAGES_ER:'), er)
+            })
         })
-        .on('disconnect', (socket) => {
-          console.log(chalk.redBright('Disconnect_user'), socket);
+        .on('GET_POLL_MESSAGES', ({poll}) => {
+          // защита от перелезания дальше
+          const checkEqual = poll === 'none';
+          if(checkEqual) {
+            console.log('STOP_WORKING')
+            return
+          }
+
+          MsgModel.find({poll}).then(messages => {
+
+            socket.emit('RES_POLL_MESSAGES', { messages })
+            
+          })
+          .catch(er => {
+            console.log(chalk.redBright('FIND_POLL_MESSAGES_ER'), er)
+          })
+
+        })
+        .on('EDIT_PROFILE', ({newProfileData}) => {
+          const { nickName, loginName, password, _id } = newProfileData;
+          
+          UserModel.findOne({loginName}).then(user => {
+            debugger
+
+            const continueSave = () => {
+              UserModel.updateOne({_id}, { nickName, loginName, password})
+              .then(updateRes => {
+                socket.emit('SET_MY_PROFILE', newProfileData)
+                DialogModel.find({$or: [{author: _id}, {partner: _id}]})
+                .then(dialogs => {
+                  const partnersId = dialogs.map(({author, partner}) => author+'' === _id ? partner+'' : author+'')
+                  socket.to(partnersId).emit('SET_PROFILE', {newProfileData})
+                })
+              })
+              .catch(er => {
+                console.log(chalk.redBright('FIND_USER_BY_LOGINNAME_ER'), er)
+              })
+            }
+
+            if(user === null) {
+              // Юзера нет, значит логин свободен, продолжается сохранение
+              continueSave()
+            } else if(user['_id']+'' === _id+'') {
+              // Юзер это я, продолжается сохранение других данных
+              continueSave()
+            } else {
+              // Логин занят
+              socket.emit('BAD_EDIT_PROFILE', {message: 'This login is already taken'})
+            }
+
+          })
+          .catch(er => {
+            console.log(chalk.redBright('FIND_USER_BY_LOGINNAME_ER'), er)
+          })
+        })
+        .on('LOGOUT', ({_id}) => {
+          this.setOnlineServer(socket, _id, false)
+          
+        })
+        .on('disconnect', (reason) => {
+          console.log(chalk.redBright('Disconnect_user'), reason);
+          console.log(socket?.handshake?.decode)
+          if(socket.handshake.hasOwnProperty('decode')) {
+            const {_id} = socket.handshake.decode;
+            this.setOnlineServer(socket, _id, false)
+            
+          }
         })
 
-      //   })
     })
 
   }
@@ -604,6 +682,19 @@ class WSServer {
     } else {
       return res
     }
+  }
+
+  setOnlineServer(socket, _id, status) {
+    UserModel.updateOne({_id}, {online: status}).then((upRes) => {
+      DialogModel.find({$or: [{author: _id}, {partner: _id}]})
+      .then(dialogs => {
+        const partnersId = dialogs.map(({author, partner}) => author+'' === _id ? partner+'' : author+'');
+        socket.to(partnersId).emit('SET_ONLINE', {_id, status})
+      })
+    })
+    .catch(er => {
+      console.log(chalk.redBright('UPDATE_USER_ONLINE_ER'), er)
+    })
   }
 
   

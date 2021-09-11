@@ -1,8 +1,12 @@
 const mongoose = require('mongoose');
 
-const { Schema, model } = mongoose;
+const { Schema, model, Types } = mongoose;
 
 const msgSchema = Schema({
+  _id: {
+    type: Schema.Types.ObjectId,
+    default: Types.ObjectId(),
+  },
   text: String,
   author: {
     type: Schema.Types.ObjectId,

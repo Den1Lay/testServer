@@ -2,6 +2,8 @@ const app = require('../app');
 const debug = require('debug')('server:server');
 const http = require('http');
 const mongoose = require('mongoose')
+const dataLoader = require('../utils/dataLoader')
+const chalk = require('chalk')
 
 const SocketServer = require('../routes/socket');
 
@@ -11,13 +13,14 @@ app.set('port', port);
 mongoose.connect('mongodb://localhost:27017/test', {useNewUrlParser: true, useUnifiedTopology: true});
 const server = http.createServer(app);
 
+dataLoader().then(() => {
+  server.listen(port, () => console.log(`Listen localhost:${port}`));
+  server.on('error', onError);
+  server.on('listening', onListening);
 
+  new SocketServer(server);
+}).catch(er => console.log(chalk.redBright('DATA_LOADER_ER:'), er))
 
-server.listen(port, () => console.log(`Listen localhost:${port}`));
-server.on('error', onError);
-server.on('listening', onListening);
-
-new SocketServer(server);
 
 function normalizePort(val) {
   var port = parseInt(val, 10);

@@ -1,8 +1,12 @@
 const mongoose = require('mongoose');
 
-const { Schema, model } = mongoose
+const { Schema, model, Types } = mongoose
 
 const dialogSchema = Schema({
+  _id: {
+    type: Schema.Types.ObjectId,
+    default: Types.ObjectId(),
+  },
   author: {
     type: Schema.Types.ObjectId,
     ref: 'User'
