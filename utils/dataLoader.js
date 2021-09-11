@@ -57,6 +57,10 @@ module.exports = () => new Promise((resolve, reject) => {
             })
             .catch(er => reject(er))
         })
+        .catch(er => {
+          resolve()
+          return
+        })
     })
   }
 

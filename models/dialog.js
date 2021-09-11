@@ -5,7 +5,7 @@ const { Schema, model, Types } = mongoose
 const dialogSchema = Schema({
   _id: {
     type: Schema.Types.ObjectId,
-    default: Types.ObjectId(),
+    default: new Types.ObjectId(),
   },
   author: {
     type: Schema.Types.ObjectId,

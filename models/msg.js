@@ -5,7 +5,7 @@ const { Schema, model, Types } = mongoose;
 const msgSchema = Schema({
   _id: {
     type: Schema.Types.ObjectId,
-    default: Types.ObjectId(),
+    default: new Types.ObjectId(),
   },
   text: String,
   author: {
