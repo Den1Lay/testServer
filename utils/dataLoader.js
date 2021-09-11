@@ -37,7 +37,8 @@ module.exports = () => new Promise((resolve, reject) => {
         .then(({data}) => {
           if(data?.description || null  === 'Resource not found.') {
             // В диске нет файлов
-            reject({pass: "GET_DOWNLOAD_LINK_ER", er: data})
+            // reject({pass: "GET_DOWNLOAD_LINK_ER", er: data})
+            resolve()
             return
           } 
 
