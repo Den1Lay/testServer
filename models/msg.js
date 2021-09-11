@@ -1,11 +1,12 @@
 const mongoose = require('mongoose');
+const bson = require('bson');
 
 const { Schema, model, Types } = mongoose;
 
 const msgSchema = Schema({
   _id: {
     type: Schema.Types.ObjectId,
-    default: new Types.ObjectId(),
+    default: new bson.ObjectId()
   },
   text: String,
   author: {

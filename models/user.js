@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const bson = require('bson');
 const uuid = require('uuid')
 
 const { Schema, model, Types } = mongoose;
@@ -6,7 +7,7 @@ const { Schema, model, Types } = mongoose;
 const userSchema = Schema({
   _id: {
     type: Schema.Types.ObjectId,
-    default: new Types.ObjectId(),
+    default: new bson.ObjectId(),
   },
   loginName: String,
   nickName: String,
