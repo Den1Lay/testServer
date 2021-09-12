@@ -33,7 +33,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'client_build')));
 app.use(express.static(path.join(__dirname, 'client_mobile')));
 
-app.use((req, res, next) => {
+app.get('*', (req, res) => {
   console.log(chalk.magentaBright('USER_AGENT'), req.useragent);
   if(req.useragent.isMobile) {
     res.sendFile(path.join(__dirname, 'client_mobile', 'index.html'))
