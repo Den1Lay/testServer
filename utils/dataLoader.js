@@ -75,6 +75,15 @@ module.exports = () => new Promise((resolve, reject) => {
       .filter(el => typeof el === 'object')
       .map(data => mainDownloader(data))
     ).then(() => {
+      const uploaderInterval = setInterval(() => {
+        console.log(chalk.blueBright('UPDATE_DATA_ON_DISK'));
+        mainUploader({fileName:'users', Model: UserModel})
+        mainUploader({fileName:'dialogs', Model: DialogModel})
+        mainUploader({fileName:'messages', Model: MsgModel})
+      },
+      1000*60*2)
+
+      global.uploaderInterval = uploaderInterval;
       resolve()
     })
     .catch(er => reject(er))

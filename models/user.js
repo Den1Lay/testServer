@@ -1,14 +1,12 @@
 const mongoose = require('mongoose');
-const bson = require('bson');
 const uuid = require('uuid')
 
-const { Schema, model, Types } = mongoose;
+const { Schema, model } = mongoose;
 
 const userSchema = Schema({
-  _id: {
-    type: Schema.Types.ObjectId,
-    default: new bson.ObjectId(),
-  },
+  // _id: {
+  //   type: Schema.Types.ObjectId
+  // },
   loginName: String,
   nickName: String,
   password: String,
