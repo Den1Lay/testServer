@@ -33,6 +33,14 @@ app.use(express.static(path.join(__dirname, 'client_mobile')));
 // app.use('/users', usersRouter);
 app.use('/auth', authRouter);
 // app.use(checkAuth)
+app.get('/', (req, res) => {
+  console.log(chalk.magentaBright('USER_AGENT'), req.useragent);
+  if(req.useragent.isMobile) {
+    res.sendFile(path.join(__dirname, 'client_mobile', 'index.html'))
+  } else {
+    res.sendFile(path.join(__dirname, 'client_build', 'index.html'))
+  }
+})
 app.get('*', (req, res) => {
   console.log(chalk.magentaBright('USER_AGENT'), req.useragent);
   if(req.useragent.isMobile) {
