@@ -24,24 +24,23 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, 'client_build')));
-app.use(express.static(path.join(__dirname, 'client_mobile')));
+app.get('*', (req, res, next) => {
+  console.log(chalk.redBright('GET_*'));
+  global.currentUserIsMobile = req.useragent.isMobile
+  next()
+})
 
 // app.get('*', express.static(path.resolve(__dirname, 'client_build')))
 // app.use('/', indexRouter);
 // app.use('/users', usersRouter);
 app.use('/auth', authRouter);
 // app.use(checkAuth)
-app.get('/', (req, res) => {
-  console.log(chalk.magentaBright('USER_AGENT'), req.useragent);
-  if(req.useragent.isMobile) {
-    res.sendFile(path.join(__dirname, 'client_mobile', 'index.html'))
-  } else {
-    res.sendFile(path.join(__dirname, 'client_build', 'index.html'))
-  }
-})
-app.get('*', (req, res) => {
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(express.static(path.join(__dirname, global.currentUserIsMobile 
+  ? 'client_mobile' : 'client_build' )));
+// app.use(express.static(path.join(__dirname, 'client_mobile')));
+
+app.use((req, res, next) => {
   console.log(chalk.magentaBright('USER_AGENT'), req.useragent);
   if(req.useragent.isMobile) {
     res.sendFile(path.join(__dirname, 'client_mobile', 'index.html'))
@@ -50,6 +49,8 @@ app.get('*', (req, res) => {
   }
 
 })
+
+
 // catch 404 and forward to error handler
 // app.use(function(req, res, next) {
 //   next(createError(404));
