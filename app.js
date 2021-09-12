@@ -24,21 +24,14 @@ app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 app.use(cookieParser());
-app.get('*', (req, res, next) => {
-  console.log(chalk.redBright('GET_*'));
-  global.currentUserIsMobile = req.useragent.isMobile
-  next()
-})
-
 // app.get('*', express.static(path.resolve(__dirname, 'client_build')))
 // app.use('/', indexRouter);
 // app.use('/users', usersRouter);
 app.use('/auth', authRouter);
 // app.use(checkAuth)
 app.use(express.static(path.join(__dirname, 'public')));
-app.use(express.static(path.join(__dirname, global.currentUserIsMobile 
-  ? 'client_mobile' : 'client_build' )));
-// app.use(express.static(path.join(__dirname, 'client_mobile')));
+app.use(express.static(path.join(__dirname, 'client_build')));
+app.use(express.static(path.join(__dirname, 'client_mobile')));
 
 app.use((req, res, next) => {
   console.log(chalk.magentaBright('USER_AGENT'), req.useragent);
